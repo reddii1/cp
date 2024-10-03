@@ -1,5 +1,5 @@
 
-ariable "file_share_size" {
+variable "file_share_size" {
   type = map(map(string))
   description = "Map of file share sizes for each environment."
 }
