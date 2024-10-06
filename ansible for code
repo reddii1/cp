@@ -1,0 +1,154 @@
+To install software on the VMs using Ansible after they have been provisioned with Terraform, we will create an Ansible playbook that targets the virtual machines (VMs) created earlier. This playbook will handle the installation of required software for Self-hosted Integration Runtime (SHIR) and Power BI Gateway.
+
+Overview of the Ansible Setup
+
+	1.	Inventory: Define the VMs to manage using Ansible.
+	2.	Playbooks: Create playbooks for installing specific software.
+	3.	Roles: (Optional) Structure your playbooks into roles for better organization.
+
+Step-by-Step Implementation
+
+1. Directory Structure
+
+Here’s how your project directory will look like after adding Ansible:
+
+terraform-project/
+├── ansible/
+│   ├── inventory
+│   ├── playbook.yml
+│   ├── roles/
+│   │   ├── powerbi/
+│   │   │   ├── tasks/
+│   │   │   │   └── main.yml
+│   │   └── shir/
+│   │       ├── tasks/
+│   │       │   └── main.yml
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── backend.tf
+├── modules/
+│   ├── data_factory/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   ├── vm/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   ├── network/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   ├── sql/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+
+2. Ansible Inventory
+
+Create an inventory file in the ansible/ directory to list your VMs.
+
+ansible/inventory
+
+[powerbi]
+<POWER_BI_VM_PUBLIC_IP> ansible_ssh_user=<ADMIN_USERNAME> ansible_ssh_private_key_file=<PATH_TO_PRIVATE_KEY>
+
+[shir]
+<SHIR_VM_PUBLIC_IP> ansible_ssh_user=<ADMIN_USERNAME> ansible_ssh_private_key_file=<PATH_TO_PRIVATE_KEY>
+
+	•	Replace <POWER_BI_VM_PUBLIC_IP>, <SHIR_VM_PUBLIC_IP>, <ADMIN_USERNAME>, and <PATH_TO_PRIVATE_KEY> with actual values.
+
+3. Ansible Playbook
+
+Create a playbook to run both roles for installing software on the VMs.
+
+ansible/playbook.yml
+
+---
+- hosts: powerbi
+  become: yes
+  roles:
+    - powerbi
+
+- hosts: shir
+  become: yes
+  roles:
+    - shir
+
+4. Power BI Gateway Role
+
+Create the role for installing Power BI Gateway.
+
+ansible/roles/powerbi/tasks/main.yml
+
+---
+- name: Install Power BI Gateway
+  apt:
+    name: "powershell"  # Assuming Power BI Gateway needs PowerShell
+    state: present
+
+- name: Download Power BI Gateway Installer
+  get_url:
+    url: "https://download.microsoft.com/download/3/D/F/3DFB594F-22FF-4865-8E49-C2EAD7CDE6E3/PBIDesktop_x64.msi"  # Example link
+    dest: "/tmp/PBIDesktop_x64.msi"
+
+- name: Install Power BI Gateway
+  win_package:
+    path: "C:\\Windows\\Temp\\PBIDesktop_x64.msi"
+    state: present
+
+- name: Start Power BI Gateway Service
+  win_service:
+    name: "PBIEgwService"
+    start_mode: auto
+    state: started
+
+5. Self-hosted Integration Runtime (SHIR) Role
+
+Create the role for installing SHIR.
+
+ansible/roles/shir/tasks/main.yml
+
+---
+- name: Install required packages for SHIR
+  apt:
+    name:
+      - curl
+      - unzip
+      - openjdk-8-jdk
+    state: present
+
+- name: Download SHIR Installer
+  get_url:
+    url: "https://download.microsoft.com/download/0/2/3/023C9407-DDE8-4466-A2B2-5F57B5EB0D39/IntegrationRuntime.exe"
+    dest: "/tmp/IntegrationRuntime.exe"
+
+- name: Run SHIR Installer
+  command: >
+    /tmp/IntegrationRuntime.exe /quiet
+  args:
+    creates: "/opt/microsoft/integration-runtime"
+
+- name: Start SHIR service
+  systemd:
+    name: "MicrosoftIntegrationRuntime"
+    state: started
+    enabled: yes
+
+6. Running the Playbook
+
+Once the Terraform deployment is complete, you can run the Ansible playbook to install the software on the VMs.
+
+Navigate to the ansible directory and execute:
+
+ansible-playbook -i inventory playbook.yml
+
+Detailed Explanation
+
+	1.	Ansible Inventory: Lists the VMs created by Terraform. The ansible_ssh_user and ansible_ssh_private_key_file are required to connect to the VMs securely.
+	2.	Playbook: The playbook.yml file defines which hosts to run tasks on and what roles to apply. It utilizes the become directive to run tasks with elevated privileges.
+	3.	Roles:
+	•	Power BI Role: Installs Power BI Gateway and its dependencies. It uses the get_url module to download the installer and win_package to install it.
+	•	SHIR Role: Installs the required packages for SHIR, downloads the installer, and starts the SHIR service.
+	4.	Execution: The playbook is executed from the terminal. Ansible handles the SSH connections and applies the tasks in the order specified.
+
+Conclusion
+
+This implementation allows for the seamless installation of the necessary software on the provisioned VMs using Ansible after the Terraform provisioning. Each role can be further customized based on the specific requirements of the software installations. This separation of concerns also enhances maintainability and reusability across different environments.
