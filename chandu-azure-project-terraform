@@ -1,0 +1,205 @@
+
+Step1:
+------------------------------------------------------------
+Deploy Self-Hosted Integration Runtime (SHIR) VM
+
+This VM will host the SHIR service and enable connectivity between ADF and MySQL.
+
+-------------------------------------------------------------
+
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "mysql-shir-replica-rg"
+  location = "East US"
+}
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = "mysql-shir-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_subnet" "subnet" {
+  name                 = "mysql-shir-subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_network_interface" "nic" {
+  name                = "mysql-shir-nic"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "mysql-shir-ipconfig"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                = "mysql-shir-vm"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_DS1_v2"
+  admin_username      = "adminuser"
+
+  network_interface_ids = [
+    azurerm_network_interface.nic.id,
+  ]
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+
+  custom_data = <<-EOF
+    #!/bin/bash
+    wget https://download.microsoft.com/download/E/B/A/EBA8D130-CA91-4844-A5A4-10705E090CC4/IntegrationRuntimeInstaller.exe
+    chmod +x IntegrationRuntimeInstaller.exe
+    ./IntegrationRuntimeInstaller.exe /quiet /norestart
+  EOF
+}
+
+
+
+
+Step2:
+------------------------------------------------------------
+
+Integrating Azure Data Factory ETL
+
+Once the SHIR VM is running, it allows Azure Data Factory (ADF) to connect to on-premises MySQL servers. You can use Terraform to define the Data Factory, linked services, datasets, and pipelines for the ETL process.
+
+-----------------------------------------------------------
+
+a) Create Azure Data Factory:
+==============================
+
+resource "azurerm_data_factory" "adf" {
+  name                = "my-data-factory"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+
+b) Self-hosted Integration Runtime (SHIR) Linked Service in ADF:
+==============================================================
+This step links ADF to the SHIR service installed on your VM.
+
+resource "azurerm_data_factory_integration_runtime_self_hosted" "runtime" {
+  name                = "my-self-hosted-runtime"
+  data_factory_name   = azurerm_data_factory.adf.name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+
+c) Linked Service for MySQL in ADF:
+====================================
+This connects ADF to the MySQL database using the SHIR service.
+
+resource "azurerm_data_factory_linked_service_mysql" "mysql_link" {
+  name                = "mysql-linked-service"
+  data_factory_id     = azurerm_data_factory.adf.id
+  connection_string   = "Server=${var.mysql_server};Database=${var.mysql_database};User=${var.mysql_user};Password=${var.mysql_password};"
+  integration_runtime_name = azurerm_data_factory_integration_runtime_self_hosted.runtime.name
+}
+
+
+
+d) Azure SQL Linked Service:
+===========================
+resource "azurerm_data_factory_linked_service_sql_server" "sql_link" {
+  name                = "sql-linked-service"
+  data_factory_id     = azurerm_data_factory.adf.id
+  connection_string   = "Server=tcp:${azurerm_sql_server.sql_server.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_sql_database.sql_db.name};User ID=${var.sql_admin};Password=${var.sql_password};"
+}
+
+
+
+
+
+
+
+e) Pipelines:
+Create an ETL pipeline to move data from MySQL to another service, like Blob Storage or a different MySQL server.
+==========================
+resource "azurerm_data_factory_pipeline" "etl_pipeline" {
+  name                = "etl-pipeline"
+  data_factory_id     = azurerm_data_factory.adf.id
+
+  activity {
+    name = "CopyFromMySQLToSQL"
+    type = "Copy"
+    
+    source {
+      type = "MySQLSource"
+      query = "SELECT * FROM my_table"
+    }
+
+    sink {
+      type = "SqlSink"
+      linked_service_name = azurerm_data_factory_linked_service_sql_server.sql_link.name
+      table_name = "curated_data"
+    }
+  }
+}
+
+
+
+----------------------------------------------------------------------------
+step3: Power BI Gateway Integration
+
+For Power BI to access the data from MySQL and Azure SQL, we deploy a Power BI Gateway on a VM. This gateway enables real-time analytics from on-premise databases as well as cloud databases like Azure SQL and Azure MySQL.
+-------------------------------------------------------------------------
+
+
+a) Power BI Gateway VM Setup (similar to SHIR VM setup):
+========================================================
+
+
+resource "azurerm_linux_virtual_machine" "powerbi_gateway_vm" {
+  name                = "powerbi-gateway-vm"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_DS1_v2"
+  admin_username      = "adminuser"
+
+  network_interface_ids = [
+    azurerm_network_interface.nic.id,
+  ]
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  custom_data = <<-EOF
+    #!/bin/bash
+    wget https://download.microsoft.com/download/F/2/3/F232C12D-30F1-4DA6-91A4-0DE9F70E1A70/OnPremisesDataGatewayInstaller.exe
+    chmod +x OnPremisesDataGatewayInstaller.exe
+    ./OnPremisesDataGatewayInstaller.exe /quiet /norestart
+  EOF
+}
+
+
+b) Configuring Power BI Gateway: 
+=================================
+After installing the Power BI Gateway, it can be registered with Power BI Service to connect
