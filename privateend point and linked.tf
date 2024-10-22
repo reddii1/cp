@@ -1,28 +1,28 @@
 
-Certainly! Let's integrate a private endpoint for your Azure SQL Database and configure it as a linked service in Azure Data Factory using Terraform.
+##Certainly! Let's integrate a private endpoint for your Azure SQL Database and configure it as a linked service in Azure Data Factory using Terraform.
 
 ### Step 1: **Create Private Endpoint for Azure SQL**
 
-1. **Private DNS Zone**:
-```hcl
+#1. **Private DNS Zone**:
+#```hcl
 resource "azurerm_private_dns_zone" "sql_dns_zone" {
   name                = "privatelink.database.windows.net"
   resource_group_name = azurerm_resource_group.rg.name
 }
-```
+#```
 
-2. **Virtual Network Link**:
-```hcl
+#2. **Virtual Network Link**:
+#```hcl
 resource "azurerm_private_dns_zone_virtual_network_link" "sql_vnet_link" {
   name                  = "${azurerm_virtual_network.vnet.name}-link"
   resource_group_name   = azurerm_resource_group.rg.name
   private_dns_zone_name = azurerm_private_dns_zone.sql_dns_zone.name
   virtual_network_id    = azurerm_virtual_network.vnet.id
 }
-```
+#```
 
-3. **Private Endpoint for Azure SQL**:
-```hcl
+#3. **Private Endpoint for Azure SQL**:
+#```hcl
 resource "azurerm_private_endpoint" "sql_private_endpoint" {
   name                = "sql-private-endpoint"
   location            = azurerm_resource_group.rg.location
@@ -36,10 +36,10 @@ resource "azurerm_private_endpoint" "sql_private_endpoint" {
     is_manual_connection           = false
   }
 }
-```
+#```
 
-4. **Private DNS A Record**:
-```hcl
+#4. **Private DNS A Record**:
+#```hcl
 resource "azurerm_private_dns_a_record" "sql_a_record" {
   name                = azurerm_sql_server.sql_server.name
   resource_group_name = azurerm_resource_group.rg.name
@@ -47,26 +47,26 @@ resource "azurerm_private_dns_a_record" "sql_a_record" {
   ttl                 = 300
   records             = [azurerm_private_endpoint.sql_private_endpoint.private_service_connection[0].private_ip_address]
 }
-```
+#```
 
-### Step 2: **Configure Linked Service in ADF**
+#### Step 2: **Configure Linked Service in ADF**
 
-1. **Linked Service for Azure SQL Database**:
-```hcl
+#1. **Linked Service for Azure SQL Database**:
+#```hcl
 resource "azurerm_data_factory_linked_service_azure_sql_database" "sql_linked_service" {
   name              = "AzureSqlDatabaseLinkedService"
   data_factory_id   = azurerm_data_factory.adf.id
   connection_string = "Server=tcp:${azurerm_sql_server.sql_server.fully_qualified_domain_name};Database=${azurerm_sql_database.sql_database.name};User ID=${azurerm_sql_server.sql_server.administrator_login};Password=${azurerm_sql_server.sql_server.administrator_login_password}"
 }
-```
+#```
 
-2. **Linked Service for MySQL Database**:
-```hcl
+#2. **Linked Service for MySQL Database**:
+#```hcl
 resource "azurerm_data_factory_linked_service_mysql" "mysql_linked_service" {
   name              = "MySqlLinkedService"
   data_factory_id   = azurerm_data_factory.adf.id
   connection_string = "Server=${azurerm_mysql_flexible_server.mysql_server.fqdn};Port=3306;Database=${azurerm_mysql_database.mysql_db.name};Uid=${azurerm_mysql_flexible_server.mysql_server.administrator_login};Pwd=${azurerm_mysql_flexible_server.mysql_server.administrator_login_password}"
 }
-```
+#```
 
-With this setup, your ADF will have secure, private connectivity to your Azure SQL Database and MySQL replica using private endpoints and linked services. How does this look? Need any tweaks?
+#With this setup, your ADF will have secure, private connectivity to your Azure SQL Database and MySQL replica using private endpoints and linked services. How does this look? Need any tweaks?
