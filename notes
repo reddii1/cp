@@ -1,3 +1,4 @@
+
 The purpose of this project is to migrate the data analytics from tableau to powerbi. The reason this is being done is because tableau is very unstable and we do not have enough keys per environment/stage. PowerBI also has the benefit of being microsoft native(ish).
 We need to move (or extract transform load) data from the replica database, that is a replica from omilia per environment, to the newly produced ‘curated’ database which will be azure native. This ETL job requires data factory inbetween to select which data from which database will be joined in what places (Im not too sure about this, i am not a data engineer, but once we have our sources and sinks linked to ADF we will get the data team to define the ‘data pipeline’)
  --------------------------------------------------------------------------------
@@ -16,3 +17,134 @@ whew
 What are our main blockers right now:
 the connection sstring from the ‘replica' mysql (source) to the adf seems to be blocked, something to do with policy but im not sure if this is to do with private connectivity or our policy, or incorrect configuration i don’t know.
 the connection string from the ADF to the az sql (sink) has some access right issues. I’m pretty sure this is a misconfiguration since I have an EP set up but i think the IPs are somehow wrong.
+
+
+
+
+Here's a clear summary for a delivery manager:
+
+We're undertaking a strategic migration from Tableau to PowerBI for our data analytics. Here's what you need to know:
+
+**Why We're Doing This:**
+- Tableau has been unstable
+- We're running into license key limitations across environments
+- PowerBI offers better integration with our Microsoft ecosystem
+
+**Project Scope:**
+We're building a data pipeline that will:
+1. Extract data from our existing Omilia replica databases
+2. Process this data through Azure Data Factory (ADF)
+3. Load it into a new Azure SQL database for PowerBI consumption
+
+**Current Status:**
+- Infrastructure code is written in Terraform
+- Basic architecture is in place including:
+  - Azure SQL Database (destination)
+  - Azure Data Factory (for data processing)
+  - Required networking components
+
+**Current Blockers:**
+1. Database Connection Issue
+   - Can't properly connect from our source database to Azure Data Factory
+   - This is likely a security/networking configuration issue
+
+2. Destination Connection Issue
+   - Having trouble connecting Azure Data Factory to our new Azure SQL database
+   - Appears to be related to access rights configuration
+
+**Next Steps:**
+1. Resolve network security and access issues
+2. Complete connection testing
+3. Work with the data team to define exact data transformation requirements
+
+**Timeline Impact:**
+These connection issues are our critical path items. Once resolved, we can proceed with:
+1. Data pipeline development
+2. Testing across environments
+3. PowerBI report development
+
+Would you like me to elaborate on any of these points or provide a more detailed technical breakdown of the connection issues?​​​​​​​​​​​​​​​​
+
+
+### Simple Project Update
+
+#### **Why We're Changing from Tableau to PowerBI:**
+- **Unstable Tableau**: Keeps causing issues.
+- **License Problems**: Not enough licenses to go around.
+- **Better Fit**: PowerBI works well with our other Microsoft tools.
+
+#### **What We're Doing:**
+We're setting up a system to:
+1. **Get Data**: From our current databases.
+2. **Process Data**: Using Azure Data Factory (ADF).
+3. **Store Data**: In a new Azure SQL database for PowerBI to use.
+
+#### **Where We're At:**
+- **Infrastructure Set Up**: We've written the code to create everything using Terraform.
+- **Basic Setup Done**: We've got the main parts ready:
+  - **Azure SQL Database**: Where the final data will be stored.
+  - **Azure Data Factory**: To process the data.
+  - **Network Setup**: To connect everything securely.
+
+#### **Current Problems:**
+1. **Connecting Databases**:
+   - **Issue**: Can't get the current database to talk to Azure Data Factory.
+   - **Likely Cause**: Security or network settings.
+
+2. **Connecting to SQL Database**:
+   - **Issue**: Trouble linking Azure Data Factory to the new SQL database.
+   - **Likely Cause**: Permissions or access settings.
+
+#### **Next Steps:**
+1. **Fix Connection Issues**:
+   - Sort out security and access settings.
+2. **Test Connections**:
+   - Make sure all connections work properly.
+3. **Finalize Data Requirements**:
+   - Work with the data team to specify what transformations are needed.
+
+#### **Timeline Impact:**
+- **Critical Path**: The connection issues are the main blockers. Once fixed, we can:
+  1. **Build the Data Pipeline**: Develop the data flow processes.
+  2. **Test Everything**: Check the setup in different environments.
+  3. **Create Reports**: Develop PowerBI reports based on the processed data.
+
+Let me know if you need more details or have any questions!
+
+
+
+
+
+
+Professional Summary
+Project Overview: Transition from Tableau to PowerBI
+In response to ongoing stability issues with Tableau, insufficient licensing, and the need for better integration with existing Microsoft tools, our team is transitioning to PowerBI. This change aims to enhance data processing and reporting capabilities.
+Current Implementation Steps:
+We are establishing a robust data management system that involves:
+	1.	Data Acquisition: Extracting data from our current databases.
+	2.	Data Processing: Utilizing Azure Data Factory (ADF) for efficient data transformation.
+	3.	Data Storage: Implementing an Azure SQL database to serve as the repository for PowerBI.
+Progress Update:
+	•	The infrastructure has been successfully set up using Terraform scripts.
+	•	Key components are in place:
+	•	An Azure SQL Database for final data storage.
+	•	Azure Data Factory configured for data processing.
+	•	A secure network setup facilitating connections between components.
+Challenges Encountered:
+	1.	Database Connectivity: We are facing difficulties in establishing a connection between the current database and Azure Data Factory, likely due to security or network configurations.
+	2.	SQL Database Integration: There are challenges linking Azure Data Factory to the new SQL database, potentially stemming from permissions or access settings.
+Next Steps:
+To address these challenges, we will:
+	1.	Resolve connection issues by adjusting security and access settings.
+	2.	Conduct thorough testing of all connections to ensure reliability.
+	3.	Collaborate with the data team to finalize data transformation requirements.
+Impact on Timeline:
+The connection issues represent critical blockers in our project timeline. Once resolved, we will proceed with:
+	1.	Building the data pipeline for seamless data flow.
+	2.	Testing the entire setup across different environments.
+	3.	Developing PowerBI reports based on the processed data.
+For further inquiries or additional details, please feel free to reach out.
+
+
+
+
