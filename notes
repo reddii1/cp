@@ -1,0 +1,18 @@
+The purpose of this project is to migrate the data analytics from tableau to powerbi. The reason this is being done is because tableau is very unstable and we do not have enough keys per environment/stage. PowerBI also has the benefit of being microsoft native(ish).
+We need to move (or extract transform load) data from the replica database, that is a replica from omilia per environment, to the newly produced ‘curated’ database which will be azure native. This ETL job requires data factory inbetween to select which data from which database will be joined in what places (Im not too sure about this, i am not a data engineer, but once we have our sources and sinks linked to ADF we will get the data team to define the ‘data pipeline’)
+ --------------------------------------------------------------------------------
+first things to do:
+get access rights for azure (and azure devops, dc-cnv)
+familarise with the architecture (see attached)
+ --------------------------------------------------------------------------------
+
+what to pay attention to once given access rights:
+Look at the powerbi-integration branch on dc-cnv and look at the components within terraform, namely adf.tf and curateddb.tf. These are the files that I’ve written to deploy the resources from the architecture - azure SQL database (curated), data factory (ADF) and SHIR virtual machine respectively (SHIR). Each resource has many resources connected to them, for example, there’s a network integration card for the SHIR virtual machine and links for the ‘source’ and ‘sink’ database. 
+ 
+The replica database sits within the ’normal’ vnet, which is great, that makes for ‘easier’ connection. The ADF and azure sequal database are Platform as a service (PaaS) meaning that none of the infrastructure is managed or explicitly connected by us, nor is it within our vnet. This is an issue for us because we have security policy to be complicit with, as such we need to always connect with private IPs and avoid going out to the public internet, maintaining connection through the azure backbone, whatnot (I believe). This means to get an outside component such as these PaaS offerings to use private IP connectivity we need to use ‘private endpoints’ (PE, EP, PEP for short)- what these endpoints do is create an endpoint (an IP, I suppose) within our vnet for our PaaS offerings to connect to in a secure manner which means that our resources within the VNET can then point to these endpoints privately, without violating our security conventions. In theory all connections to the PaaS should point to a public IP which reroutes the the private endpoint private IP (well, DNS configuration(?)) and then route securely.
+ 
+whew
+ --------------------------------------------------------------------------------
+What are our main blockers right now:
+the connection sstring from the ‘replica' mysql (source) to the adf seems to be blocked, something to do with policy but im not sure if this is to do with private connectivity or our policy, or incorrect configuration i don’t know.
+the connection string from the ADF to the az sql (sink) has some access right issues. I’m pretty sure this is a misconfiguration since I have an EP set up but i think the IPs are somehow wrong.
